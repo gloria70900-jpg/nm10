@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>360° Therapeutic Dichoptic Theater (Fixed 75° FOV)</title>
+  <style>
+    html, body { margin:0; padding:0; background:#000; color:#eee; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; height:100%; overflow:hidden; touch-action:none; }
+    #ui { position: fixed; top: 12px; left: 12px; z-index: 100; background: rgba(8, 12, 18, 0.92); backdrop-filter: blur(10px); border:1px solid rgba(80,180,255,0.25); border-radius: 12px; padding: 12px 14px; max-width: 440px; max-height: 92vh; overflow-y: auto; line-height: 1.25; }
+    #ui h1 { font-size: 14px; margin: 0 0 6px; font-weight: 700; color:#4da6ff; }
+    #ui h2 { font-size: 12px; margin: 10px 0 6px; font-weight: 700; color:#66e6b0; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 3px; }
+    #ui .row { display:flex; align-items:center; gap:8px; margin:6px 0; }
+    #ui label { width: 170px; font-size: 11px; color:#ddd; }
+    #ui input[type="range"] { flex:1; accent-color: #00aa77; }
+    #ui select, #ui button { background:#151e28; color:#eee; border-radius:6px; border:1px solid #335577; padding:6px 8px; font-size:11px; }
+    #ui button { cursor:pointer; }
+    #ui button:hover { background:#203040; }
+
+    /* 360 비디오 업로드 패널 */
+    .dome-card { background: rgba(0, 170, 120, 0.12); border: 1px solid #00aa77; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+    .dome-card h3 { margin: 0 0 6px; font-size: 12px; color: #66e6b0; }
+    #domeFileInput { width: 100%; font-size: 12px; color: #fff; background: #08201a; padding: 8px; border: 1px solid #00aa77; border-radius: 6px; box-sizing: border-box; cursor: pointer; }
+    #videoStatus { font-size: 11px; color: #88ffcc; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold; }
+
+    /* A/B 듀얼 녹화 패널 */
+    .rec-card { background: rgba(255, 59, 48, 0.12); border: 1px solid #ff3b30; border-radius: 8px; padding: 8px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .rec-btn-row { display: flex; gap: 6px; }
+    .rec-btn { flex: 1; padding: 9px 5px; font-weight: 700; font-size: 11px; color: #fff; border-radius: 6px; cursor: pointer; }
+    #recMonoBtn { background: #992020; border: 1px solid #ff5555; }
+    #recSbsBtn { background: #1c528f; border: 1px solid #4a90e2; }
+    .recording { animation: recBlink 1.2s infinite alternate; }
+    #recMonoBtn.recording { background: #ff2222; }
+    #recSbsBtn.recording { background: #0077ff; }
+    @keyframes recBlink { 0% { opacity: 1; } 100% { opacity: 0.45; } }
+    #recStatus { font-size: 11px; color: #ff9999; text-align: center; margin-top: 2px; }
+
+    /* 모바일 수경 VR 버튼 */
+    .mobile-vr-card { background: rgba(0, 160, 220, 0.15); border: 1px solid #00a0dc; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+    #mobileVrBtn { width: 100%; padding: 8px; font-weight: 700; font-size: 11px; background: #0077aa; color: #fff; border: 1px solid #00c8ff; border-radius: 6px; cursor: pointer; }
+
+    /* 치료적 다이코틱 미세 배율(±3~5%) 패널 */
+    .aniseikonia-card { background: rgba(140, 70, 255, 0.12); border: 1px solid #9955ff; border-radius: 8px; padding: 8px; margin: 8px 0; }
+    
+    #vrDivider { display: none; position: fixed; top: 0; left: 50%; width: 2px; height: 100%; background: rgba(255,255,255,0.25); z-index: 5; pointer-events: none; }
+    #exitVrBtn { display: none; position: fixed; top: 12px; right: 12px; z-index: 200; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid #666; border-radius: 20px; padding: 6px 14px; font-size: 12px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div id="vrDivider"></div>
+<button id="exitVrBtn">✕ VR 모드 종료</button>
+
+<div id="ui">
+  <h1>360° 자연치유 — 동조 훈련 극장</h1>
+
+  <!-- 1. 360 비디오 선택기 -->
+  <div class="dome-card">
+    <h3>🌲 360° VR 동영상 로더 (숲/바다 자연치유 영상)</h3>
+    <input type="file" id="domeFileInput" accept="video/*,.mp4,.webm,.mkv,.avi,.mov" />
+    <div id="videoStatus">360° 비디오(숲/바다 등)를 선택해 주세요.</div>
+    <div class="row" style="margin-top:8px;">
+      <button id="playPauseBtn" style="flex:1;">▶ 재생 / 일시정지</button>
+      <button id="restartBtn" style="flex:1;">⏮ 처음부터</button>
+    </div>
+    <div class="row">
+      <label>자연음/배경 볼륨</label>
+      <input id="domeVol" type="range" min="0" max="1" step="0.01" value="0.9" />
+    </div>
+  </div>
+
+  <!-- 2. 단일(A) / 분할(B) 녹화 선택 모듈 -->
+  <div class="rec-card">
+    <div class="rec-btn-row">
+      <button id="recMonoBtn" class="rec-btn">🔴 단일 녹화 (A 버튼 / Key A)</button>
+      <button id="recSbsBtn" class="rec-btn">🔵 360 SBS 녹화 (B 버튼 / Key B)</button>
+    </div>
+    <div id="recStatus">녹화 대기 중 (A: 단일화면 / B: 양안분할화면)</div>
+  </div>
+
+  <div class="mobile-vr-card">
+    <button id="mobileVrBtn">🥽 스마트폰 수경 VR 화면 모드 켜기</button>
+  </div>
+
+  <!-- 3. 파눔 융합 영역(±3%~5%) 미세 배율 조정 모드 -->
+  <div class="aniseikonia-card">
+    <div class="row" style="margin-top:0;">
+      <label style="color:#b388ff; font-weight:700;">치료적 미세 융합 모드</label>
+      <select id="asymmPreset" style="flex:1;">
+        <option value="normal">동일 크기 (표준 정상)</option>
+        <option value="leftBig" selected>왼쪽이 더 크게 보이는 사람 (-3%)</option>
+        <option value="rightBig">오른쪽이 더 크게 보이는 사람 (+3%)</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>양안 미세 배율 비 (0.95~1.05)</label>
+      <input id="ratioSlider" type="range" min="0.95" max="1.05" step="0.005" value="0.97" />
+      <span id="ratioText" style="font-size:11px; color:#b388ff; width:38px; text-align:right;">0.970</span>
+    </div>
+  </div>
+
+  <h2>360° 환경 설정 (양안 FOV 75° 고정)</h2>
+  <div class="row"><label>구체 회전 오프셋 Y(°)</label><input id="rotY" type="range" min="-180" max="180" step="5" value="0" /></div>
+</div>
+
+<script type="module">
+  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js';
+  import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/webxr/VRButton.js';
+
+  const $ = (sel) => document.querySelector(sel);
+
+  // ---------- 1. Renderer & Scene Setup ----------
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.xr.enabled = true;
+  document.body.appendChild(renderer.domElement);
+  document.body.appendChild(VRButton.createButton(renderer));
+  renderer.xr.setFramebufferScaleFactor(1.25);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x02080a);
+
+  // [핵심 1] 양안 카메라 화각(FOV)을 정확히 75도로 영구 고정 (피사체 잘림 및 시야 불일치 원천 제거)
+  const FIXED_FOV = 75.0;
+
+  const camera = new THREE.PerspectiveCamera(FIXED_FOV, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 0, 0);
+
+  const camLeft = new THREE.PerspectiveCamera(FIXED_FOV, (window.innerWidth * 0.5) / window.innerHeight, 0.1, 1000);
+  const camRight = new THREE.PerspectiveCamera(FIXED_FOV, (window.innerWidth * 0.5) / window.innerHeight, 0.1, 1000);
+  const IPD = 0.064;
+
+  // ---------- 2. SBS 독립 오프스크린 렌더러 (1920x1080) ----------
+  const sbsCanvas = document.createElement('canvas');
+  sbsCanvas.width = 1920; sbsCanvas.height = 1080;
+  const sbsRenderer = new THREE.WebGLRenderer({ canvas: sbsCanvas, antialias: true, preserveDrawingBuffer: true });
+  sbsRenderer.setSize(1920, 1080);
+  sbsRenderer.autoClear = false;
+
+  const sbsCamLeft = new THREE.PerspectiveCamera(FIXED_FOV, 960 / 1080, 0.1, 1000);
+  const sbsCamRight = new THREE.PerspectiveCamera(FIXED_FOV, 960 / 1080, 0.1, 1000);
+
+  // ---------- 3. Web Audio & 하드웨어 비디오 버스 ----------
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  const audioCtx = new AudioContextClass();
+  window.addEventListener('pointerdown', () => { if (audioCtx.state === 'suspended') audioCtx.resume(); }, { once: true });
+
+  const audioStreamDest = audioCtx.createMediaStreamDestination();
+  const masterRecordGain = audioCtx.createGain();
+  masterRecordGain.gain.value = 1.0;
+  masterRecordGain.connect(audioCtx.destination);
+  masterRecordGain.connect(audioStreamDest);
+
+  const domeVideoEl = document.createElement('video');
+  domeVideoEl.crossOrigin = 'anonymous';
+  domeVideoEl.playsInline = true;
+  domeVideoEl.loop = true;
+  domeVideoEl.muted = false;
+  domeVideoEl.preload = 'auto';
+
+  let domeVideoTex = null;
+  let videoSourceNode = null;
+  const domeVideoGain = audioCtx.createGain();
+  domeVideoGain.gain.value = 0.9;
+  domeVideoGain.connect(masterRecordGain);
+
+  // ---------- 4. 360° 대형 구체(SphereGeometry) 및 앰비언트 텍스처 ----------
+  const sphereGroup = new THREE.Group();
+  scene.add(sphereGroup);
+
+  // [핵심 2] 파눔 융합 영역 내 미세 배율 기본값 (좌 0.97, 우 1.03 -> 총 6% 편차)
+  let dichopticParams = {
+    leftEyeScaleMult: 0.97,
+    rightEyeScaleMult: 1.03,
+    rotationY: 0
+  };
+
+  const ambCanvas = document.createElement('canvas');
+  ambCanvas.width = 2048; ambCanvas.height = 1024;
+  const aCtx = ambCanvas.getContext('2d');
+  
+  const grad = aCtx.createLinearGradient(0, 0, 0, 1024);
+  grad.addColorStop(0, '#041c24');
+  grad.addColorStop(0.48, '#0b3d45');
+  grad.addColorStop(0.52, '#062624');
+  grad.addColorStop(1, '#02100e');
+  aCtx.fillStyle = grad;
+  aCtx.fillRect(0, 0, 2048, 1024);
+
+  aCtx.strokeStyle = 'rgba(70, 210, 180, 0.25)';
+  aCtx.lineWidth = 1.5;
+  for (let lat = 64; lat < 1024; lat += 64) {
+    aCtx.beginPath(); aCtx.moveTo(0, lat); aCtx.lineTo(2048, lat); aCtx.stroke();
+  }
+  for (let lon = 128; lon < 2048; lon += 128) {
+    aCtx.beginPath(); aCtx.moveTo(lon, 0); aCtx.lineTo(lon, 1024); aCtx.stroke();
+  }
+
+  aCtx.fillStyle = '#ffffff'; aCtx.font = 'bold 36px sans-serif'; aCtx.textAlign = 'center';
+  aCtx.fillText('🌲 360° 자연치유 — 동조 훈련 극장 (75° FOV) 🌊', 1024, 470);
+  aCtx.fillStyle = '#66ffd9'; aCtx.font = '24px sans-serif';
+  aCtx.fillText('360° 영상을 업로드하면 양안 동일 시야에서 융합 훈련이 진행됩니다', 1024, 530);
+
+  const defaultTex = new THREE.CanvasTexture(ambCanvas);
+
+  const sphereMat = new THREE.MeshBasicMaterial({
+    map: defaultTex,
+    side: THREE.DoubleSide
+  });
+
+  const sphereGeo = new THREE.SphereGeometry(100, 64, 40);
+  sphereGeo.scale(-1, 1, 1);
+
+  const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+  sphereGroup.add(sphereMesh);
+
+  // [핵심 3] 순수 광학적 다이코틱(Optical Dichoptic) 분리 함수
+  // FOV는 75도로 동일하게 유지한 상태에서 콘트라스트/채도/선명도만 안전하게 분리
+  function applyOpticalDichoptic(eye) {
+    if (eye === 'left') {
+      // [좌안]: 감마와 대비를 부드럽게 낮춘 소프트 톤 (시각 자극 완충)
+      sphereMat.color.setRGB(0.92, 0.92, 0.92);
+    } else if (eye === 'right') {
+      // [우안]: 핀포인트 초고선명화 (디테일과 나뭇잎/결의 엣지 강조)
+      sphereMat.color.setRGB(1.18, 1.18, 1.18);
+    } else {
+      sphereMat.color.setRGB(1.0, 1.0, 1.0);
+    }
+  }
+
+  // ---------- 5. 360° 비디오 로더 (requestVideoFrameCallback 프레임 동기화) ----------
+  const domeFileInput = $('#domeFileInput');
+  const videoStatus = $('#videoStatus');
+  const playPauseBtn = $('#playPauseBtn');
+  const restartBtn = $('#restartBtn');
+  const domeVol = $('#domeVol');
+
+  let isFrameLoopRunning = false;
+
+  function updateVideoFrameLoop() {
+    if (domeVideoTex) domeVideoTex.needsUpdate = true;
+    if ('requestVideoFrameCallback' in domeVideoEl) {
+      domeVideoEl.requestVideoFrameCallback(updateVideoFrameLoop);
+    }
+  }
+
+  domeFileInput.addEventListener('change', () => {
+    const file = domeFileInput.files && domeFileInput.files[0];
+    if (!file) return;
+
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    videoStatus.textContent = `⏳ 360° 비디오 분석 중: ${file.name}...`;
+
+    const streamUrl = URL.createObjectURL(file);
+    domeVideoEl.src = streamUrl;
+    domeVideoEl.load();
+
+    if (domeVideoTex) domeVideoTex.dispose();
+    domeVideoTex = new THREE.VideoTexture(domeVideoEl);
+    domeVideoTex.colorSpace = THREE.SRGBColorSpace;
+    domeVideoTex.minFilter = THREE.LinearFilter;
+    domeVideoTex.magFilter = THREE.LinearFilter;
+    domeVideoTex.generateMipmaps = false;
+
+    sphereMat.map = domeVideoTex;
+    sphereMat.needsUpdate = true;
+
+    if (!videoSourceNode) {
+      try {
+        videoSourceNode = audioCtx.createMediaElementSource(domeVideoEl);
+        videoSourceNode.connect(domeVideoGain);
+      } catch(err) {
+        console.warn(err);
+      }
+    }
+
+    domeVideoEl.onloadeddata = () => {
+      domeVideoEl.play().then(() => {
+        videoStatus.textContent = `▶ 360° 재생 중: ${file.name} (${(file.size / (1024*1024)).toFixed(1)} MB)`;
+        if (!isFrameLoopRunning && 'requestVideoFrameCallback' in domeVideoEl) {
+          isFrameLoopRunning = true;
+          domeVideoEl.requestVideoFrameCallback(updateVideoFrameLoop);
+        }
+      }).catch(err => {
+        videoStatus.textContent = `준비 완료: [▶ 재생] 버튼을 눌러주세요.`;
+      });
+    };
+
+    domeVideoEl.onerror = () => {
+      videoStatus.textContent = `❌ 재생 실패: 브라우저 지원 비디오 코덱인지 확인해 주세요.`;
+    };
+  });
+
+  playPauseBtn.addEventListener('click', () => {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (!domeVideoEl.src) return;
+    if (domeVideoEl.paused) {
+      domeVideoEl.play().then(() => {
+        videoStatus.textContent = `▶ 360° 재생 중`;
+      }).catch(e => {
+        videoStatus.textContent = `재생 실패: 화면 터치 필요`;
+      });
+    } else {
+      domeVideoEl.pause();
+      videoStatus.textContent = `⏸ 일시 정지됨`;
+    }
+  });
+
+  restartBtn.addEventListener('click', () => {
+    if (!domeVideoEl.src) return;
+    domeVideoEl.currentTime = 0;
+    domeVideoEl.play();
+  });
+
+  domeVol.addEventListener('input', e => {
+    domeVideoGain.gain.value = Number(e.target.value);
+  });
+
+  // ---------- 6. 미세 배율 조정 슬라이더 (±1% ~ 5%) ----------
+  const asymmPreset = $('#asymmPreset');
+  const ratioSlider = $('#ratioSlider');
+  const ratioText = $('#ratioText');
+  const rotYEl = $('#rotY');
+
+  function updateAsymmetry(val) {
+    ratioSlider.value = val.toFixed(3);
+    ratioText.textContent = val.toFixed(3);
+    if (Math.abs(val - 1.0) < 0.001) {
+      dichopticParams.leftEyeScaleMult = 1.0;
+      dichopticParams.rightEyeScaleMult = 1.0;
+    } else if (val < 1.0) {
+      const diff = 1.0 - val;
+      dichopticParams.leftEyeScaleMult = 1.0 - diff;
+      dichopticParams.rightEyeScaleMult = 1.0 + diff;
+    } else {
+      const diff = val - 1.0;
+      dichopticParams.leftEyeScaleMult = 1.0 + diff;
+      dichopticParams.rightEyeScaleMult = 1.0 - diff;
+    }
+  }
+
+  asymmPreset.addEventListener('change', () => {
+    if (asymmPreset.value === 'leftBig') updateAsymmetry(0.970); // -3% 미세 보정
+    else if (asymmPreset.value === 'rightBig') updateAsymmetry(1.030); // +3% 미세 보정
+    else updateAsymmetry(1.000);
+  });
+
+  ratioSlider.addEventListener('input', (e) => {
+    updateAsymmetry(Number(e.target.value));
+  });
+
+  rotYEl.addEventListener('input', (e) => {
+    dichopticParams.rotationY = THREE.MathUtils.degToRad(Number(e.target.value));
+    sphereGroup.rotation.y = dichopticParams.rotationY;
+  });
+
+  // ---------- 7. 스마트폰 수경 VR (Cardboard SBS) 모드 ----------
+  const uiPanel = $('#ui');
+  const vrDivider = $('#vrDivider');
+  const exitVrBtn = $('#exitVrBtn');
+  const mobileVrBtn = $('#mobileVrBtn');
+  let isMobileVr = false;
+  let deviceEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+
+  function startMobileVR(){
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission().then(state => {
+        if (state === 'granted') window.addEventListener('deviceorientation', handleOrientation);
+      }).catch(console.error);
+    } else {
+      window.addEventListener('deviceorientation', handleOrientation);
+    }
+
+    const docEl = document.documentElement;
+    if (docEl.requestFullscreen) docEl.requestFullscreen().catch(()=>{});
+    else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+
+    isMobileVr = true;
+    uiPanel.style.display = 'none';
+    vrDivider.style.display = 'block';
+    exitVrBtn.style.display = 'block';
+    onResize();
+  }
+
+  function stopMobileVR(){
+    isMobileVr = false;
+    uiPanel.style.display = 'block';
+    vrDivider.style.display = 'none';
+    exitVrBtn.style.display = 'none';
+    window.removeEventListener('deviceorientation', handleOrientation);
+    if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+    onResize();
+  }
+
+  mobileVrBtn.addEventListener('click', startMobileVR);
+  exitVrBtn.addEventListener('click', stopMobileVR);
+
+  function handleOrientation(e){
+    if (!e.alpha) return;
+    const alpha = THREE.MathUtils.degToRad(e.alpha);
+    const beta = THREE.MathUtils.degToRad(e.beta);
+    const gamma = THREE.MathUtils.degToRad(e.gamma);
+    deviceEuler.set(beta, alpha, -gamma, 'YXZ');
+    camera.quaternion.setFromEuler(deviceEuler);
+  }
+
+  function onResize(){
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.fov = FIXED_FOV; // 75도 고정
+    camera.updateProjectionMatrix();
+
+    camLeft.aspect = (w * 0.5) / h;
+    camLeft.fov = FIXED_FOV; // 75도 고정
+    camLeft.updateProjectionMatrix();
+
+    camRight.aspect = (w * 0.5) / h;
+    camRight.fov = FIXED_FOV; // 75도 고정
+    camRight.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', onResize);
+
+  // ---------- 8. A(단일) / B(양안 SBS) 듀얼 녹화 모듈 ----------
+  const recMonoBtn = $('#recMonoBtn');
+  const recSbsBtn  = $('#recSbsBtn');
+  const recStatus  = $('#recStatus');
+
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let isRecording = false;
+  let recordingMode = null;
+
+  function getBestSupportedMimeType(){
+    const candidates = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=h264', 'video/webm'];
+    for(const t of candidates){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported(t)) return t;
+    }
+    return '';
+  }
+
+  function startRecording(mode){
+    if (isRecording) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    try {
+      recordingMode = mode;
+      const streamSource = (mode === 'sbs') ? sbsCanvas.captureStream(30) : renderer.domElement.captureStream(30);
+
+      const audioTracks = audioStreamDest.stream.getAudioTracks();
+      const tracks = [...streamSource.getVideoTracks()];
+      if (audioTracks.length > 0) tracks.push(audioTracks[0]);
+      const combinedStream = new MediaStream(tracks);
+
+      const mime = getBestSupportedMimeType();
+      recordedChunks = [];
+      mediaRecorder = new MediaRecorder(combinedStream, mime ? { mimeType: mime, videoBitsPerSecond: 12000000 } : {});
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const isMp4 = mediaRecorder.mimeType && mediaRecorder.mimeType.includes('mp4');
+        const ext = isMp4 ? 'mp4' : 'webm';
+        const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'video/mp4' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const dateStr = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+        const prefix = (recordingMode === 'sbs') ? 'VR360_Therapeutic_SBS' : 'VR360_Mono';
+        a.download = `${prefix}_${dateStr}.${ext}`;
+        a.href = url;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 2000);
+
+        recStatus.textContent = `저장 완료: ${prefix}_${dateStr}.${ext}`;
+        recMonoBtn.classList.remove('recording');
+        recSbsBtn.classList.remove('recording');
+        recMonoBtn.textContent = '🔴 단일 녹화 (A 버튼 / Key A)';
+        recSbsBtn.textContent = '🔵 360 SBS 녹화 (B 버튼 / Key B)';
+        isRecording = false;
+        recordingMode = null;
+      };
+
+      mediaRecorder.start(1000);
+      isRecording = true;
+
+      if (mode === 'sbs') {
+        recSbsBtn.classList.add('recording');
+        recSbsBtn.textContent = '⏹️ SBS 녹화 중지 (B 버튼)';
+        recStatus.textContent = '● [360 양안 SBS] 융합 녹화 진행 중...';
+      } else {
+        recMonoBtn.classList.add('recording');
+        recMonoBtn.textContent = '⏹️ 단일 녹화 중지 (A 버튼)';
+        recStatus.textContent = '● [360 단일 모노] 녹화 진행 중...';
+      }
+
+    } catch (err) {
+      recStatus.textContent = '녹화 실패: ' + err.message;
+      isRecording = false;
+    }
+  }
+
+  function stopRecording(){
+    if (!isRecording || !mediaRecorder) return;
+    if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    recStatus.textContent = '인코딩 및 MP4 파일 저장 중...';
+  }
+
+  function toggleRecordMono(){
+    if (isRecording) {
+      if (recordingMode === 'mono') stopRecording();
+      else { stopRecording(); setTimeout(()=>startRecording('mono'), 400); }
+    } else {
+      startRecording('mono');
+    }
+  }
+
+  function toggleRecordSbs(){
+    if (isRecording) {
+      if (recordingMode === 'sbs') stopRecording();
+      else { stopRecording(); setTimeout(()=>startRecording('sbs'), 400); }
+    } else {
+      startRecording('sbs');
+    }
+  }
+
+  recMonoBtn.addEventListener('click', toggleRecordMono);
+  recSbsBtn.addEventListener('click', toggleRecordSbs);
+
+  window.addEventListener('keydown', (e)=>{
+    if (e.code === 'KeyA') toggleRecordMono();
+    if (e.code === 'KeyB') toggleRecordSbs();
+  });
+
+  // 오큘러스 컨트롤러 A/B 버튼 감지
+  let lastButtonStates = { btnA: false, btnB: false };
+  function handleQuestDualButtons(){
+    const session = renderer.xr.getSession();
+    if (!session || !session.inputSources) return;
+
+    for (const source of session.inputSources) {
+      if (source && source.handedness === 'right' && source.gamepad && source.gamepad.buttons) {
+        const bA = source.gamepad.buttons[4];
+        const bB = source.gamepad.buttons[5];
+
+        if (bA) {
+          const pressedA = bA.pressed || bA.value > 0.5;
+          if (pressedA && !lastButtonStates.btnA) toggleRecordMono();
+          lastButtonStates.btnA = pressedA;
+        }
+        if (bB) {
+          const pressedB = bB.pressed || bB.value > 0.5;
+          if (pressedB && !lastButtonStates.btnB) toggleRecordSbs();
+          lastButtonStates.btnB = pressedB;
+        }
+      }
+    }
+  }
+
+  // ---------- 9. Main Animation Loop ----------
+  renderer.setAnimationLoop(() => {
+    // 1. SBS 분할 녹화 중일 때 (양안 75도 FOV 유지 + 미세 배율 및 광학 셰이딩 적용)
+    if (isRecording && recordingMode === 'sbs') {
+      sbsCamLeft.position.copy(camera.position);
+      sbsCamRight.position.copy(camera.position);
+      sbsCamLeft.quaternion.copy(camera.quaternion);
+      sbsCamRight.quaternion.copy(camera.quaternion);
+      sbsCamLeft.translateX(-IPD * 0.5);
+      sbsCamRight.translateX(IPD * 0.5);
+
+      // FOV 75도 고정
+      sbsCamLeft.fov = FIXED_FOV;
+      sbsCamLeft.updateProjectionMatrix();
+      sbsCamRight.fov = FIXED_FOV;
+      sbsCamRight.updateProjectionMatrix();
+
+      sbsRenderer.clear();
+
+      // [좌안]: 미세 스케일(0.97) + 부드러운 소프트 블러 콘트라스트
+      sphereGroup.scale.set(dichopticParams.leftEyeScaleMult, dichopticParams.leftEyeScaleMult, dichopticParams.leftEyeScaleMult);
+      sphereGroup.updateMatrixWorld(true);
+      applyOpticalDichoptic('left');
+
+      sbsRenderer.setViewport(0, 0, 960, 1080);
+      sbsRenderer.setScissor(0, 0, 960, 1080);
+      sbsRenderer.setScissorTest(true);
+      sbsRenderer.render(scene, sbsCamLeft);
+
+      // [우안]: 미세 스케일(1.03) + 핀포인트 초고선명 엣지
+      sphereGroup.scale.set(dichopticParams.rightEyeScaleMult, dichopticParams.rightEyeScaleMult, dichopticParams.rightEyeScaleMult);
+      sphereGroup.updateMatrixWorld(true);
+      applyOpticalDichoptic('right');
+
+      sbsRenderer.setViewport(960, 0, 960, 1080);
+      sbsRenderer.setScissor(960, 0, 960, 1080);
+      sbsRenderer.setScissorTest(true);
+      sbsRenderer.render(scene, sbsCamRight);
+
+      sbsRenderer.setScissorTest(false);
+      applyOpticalDichoptic('mono');
+      sphereGroup.scale.set(1, 1, 1);
+    }
+
+    // 2. 메인 디스플레이 렌더링
+    if (renderer.xr.isPresenting) {
+      handleQuestDualButtons();
+      applyOpticalDichoptic('right'); // 퀘스트 헤드셋 안에서는 선명 모드 유지
+      sphereGroup.scale.set(1, 1, 1);
+      renderer.render(scene, camera);
+
+    } else if (isMobileVr) {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const halfW = Math.floor(w * 0.5);
+
+      renderer.autoClear = false;
+      renderer.clear();
+
+      camLeft.position.copy(camera.position);
+      camRight.position.copy(camera.position);
+      camLeft.quaternion.copy(camera.quaternion);
+      camRight.quaternion.copy(camera.quaternion);
+      camLeft.translateX(-IPD * 0.5);
+      camRight.translateX(IPD * 0.5);
+
+      camLeft.fov = FIXED_FOV;
+      camRight.fov = FIXED_FOV;
+      camLeft.updateProjectionMatrix();
+      camRight.updateProjectionMatrix();
+
+      // 좌안 (0.97 미세 보정 + 소프트 톤)
+      sphereGroup.scale.set(dichopticParams.leftEyeScaleMult, dichopticParams.leftEyeScaleMult, dichopticParams.leftEyeScaleMult);
+      sphereGroup.updateMatrixWorld(true);
+      applyOpticalDichoptic('left');
+
+      renderer.setViewport(0, 0, halfW, h);
+      renderer.setScissor(0, 0, halfW, h);
+      renderer.setScissorTest(true);
+      renderer.render(scene, camLeft);
+
+      // 우안 (1.03 미세 보정 + 핀포인트 초고선명)
+      sphereGroup.scale.set(dichopticParams.rightEyeScaleMult, dichopticParams.rightEyeScaleMult, dichopticParams.rightEyeScaleMult);
+      sphereGroup.updateMatrixWorld(true);
+      applyOpticalDichoptic('right');
+
+      renderer.setViewport(halfW, 0, halfW, h);
+      renderer.setScissor(halfW, 0, halfW, h);
+      renderer.setScissorTest(true);
+      renderer.render(scene, camRight);
+
+      renderer.setScissorTest(false);
+      applyOpticalDichoptic('mono');
+      sphereGroup.scale.set(1, 1, 1);
+
+    } else {
+      renderer.autoClear = true;
+      applyOpticalDichoptic('mono');
+      sphereGroup.scale.set(1, 1, 1);
+      renderer.render(scene, camera);
+    }
+  });
+</script>
+</body>
+</html>
